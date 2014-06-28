@@ -11,7 +11,8 @@ node_modules: package.json
 	npm install
 
 build: node_modules
-	node build.js
+	node build.js && \
+	cp -r assets/* $(BUILD_DIR)
 
 deploy: build
 	git stash && \
