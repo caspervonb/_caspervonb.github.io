@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+{{#if site.url}}
+<base href="{{ site.url }}" />
+{{/if}}
+
+<head>
+	{{> head }}
+</head>
+
+<body>
+	{{> header }}
+
+	<main role="main" class="site-content">
+		{{{ contents }}}
+	</main>
+
+   {{> footer }}
+</body>
+</html>

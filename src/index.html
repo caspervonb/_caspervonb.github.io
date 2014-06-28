@@ -1,0 +1,20 @@
+---
+template: 'default.html'
+---
+
+{{#each posts }}
+
+<article class="post">
+   <header class="post-header">
+      <a href="{{ path }}">
+         <h2 class="post-title">{{{ title }}}</h2>
+      </a>
+      <time class="post-date">{{ datetime date "MMMM DD YYYY" }}</time>
+   </header>
+
+   <span class="post-excerpt">
+      {{{ excerpt }}}
+   </span>
+</article>
+
+{{/each}}

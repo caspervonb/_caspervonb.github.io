@@ -1,0 +1,25 @@
+{
+  "name": "caspervonb",
+  "private": "true",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "BSD",
+  "devDependencies": {
+    "metalsmith": "~0.8.0",
+    "metalsmith-markdown": "~0.2.1",
+    "metalsmith-headings": "0.0.1",
+    "metalsmith-templates": "~0.5.1",
+    "metalsmith-collections": "~0.4.1",
+    "metalsmith-permalinks": "~0.3.2",
+    "metalsmith-excerpts": "~1.0.0",
+    "metalsmith-redirect": "0.0.2",
+    "handlebars": "~2.0.0-alpha.4",
+    "prismjs": "git+https://github.com/LeaVerou/prism.git#gh-pages",
+    "moment": "~2.7.0"
+  }
+}
