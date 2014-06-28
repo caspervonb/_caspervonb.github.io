@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+
+
+<base href="http://caspervonb.github.io" />
+
+
+<head>
+  <title>JavaScript Game Development Asynchronous Execution Loop</title>
+<meta name="description" content="" />
+
+<link href='http://fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+
+<link rel="stylesheet" type="text/css" href="stylesheets/index.css" />
+<link rel="stylesheet" type="text/css" href="stylesheets/syntax.css" />
+
+</head>
+
+<body>
+  <header class="site-header">
+   <span class="site-masthead">
+      <img src="" />
+
+      <a href="/"
+         <h1 class="site-title">
+            Casper Von B
+         </h1>
+      </a>
+
+      <span class="site-tagline">Designer, Developer.</span>
+   </span>
+</header>
+
+
+  <main role="main" class="site-content">
+    <article class="post">
+      <header class="post-header">
+        <h1 class="post-title">JavaScript Game Development Asynchronous Execution Loop</h1>
+        <time class="post-date">February 24 2014</time>
+      </header>
+
+      <span class="post-content">
+        <p>One of the central core components of any game is the <em>game loop</em>. The
+central piece of code that is responsible for balancing the execution of
+logic and drawing operations as-well as user input.</p>
+<p>Taking a simplistic naive approach, it could be written in the following form.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >Game</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // Holds a time-stamp indicating when the last tick occurred.
+</span>     <span class="token comment" spellcheck="true"> // Initially set to null, indicating that no tick has taken place.
+</span>      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >run<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >while</span><span class="token punctuation" >(</span><span class="token keyword" >true</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >var</span> time <span class="token operator" >=</span> Date<span class="token punctuation" >.</span><span class="token function" >now<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+        <span class="token comment" spellcheck="true"> // On the first tick delta time should be 0.
+</span>         <span class="token keyword" >let</span> delta <span class="token operator" >=</span> time <span class="token operator" >-</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >||</span> time<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> time<span class="token punctuation" >;</span>
+
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >step<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<p>This would be acceptable in a desktop environment where you have control
+of the event pump. However, in a single threaded environment like the
+browser where you have to share your execution thread with the event
+pump itself it gets a little bit trickier. If you block on this thread
+your game will seem to have frozen, and most browsers will after a
+certain period report your process as not responding, prompting the user
+to kill it.</p>
+<h2 id="going-asynchronous">Going Asynchronous</h2>
+<p>Thus we will have to adapt this to work with an asynchronous
+approach, <a href="http://docs.webplatform.org/wiki/dom/Window/setInterval" title="setInterval">setInterval</a> is the solution I come across most often,
+it allows you to invoke a callback periodically at the given
+interval. However, <a href="http://docs.webplatform.org/wiki/dom/Window/setInterval" title="setInterval">setInterval</a> is a bad candidate because it has
+the potential for the callback to be scheduled for execution before
+the previous callback has completed introducing a potential <a href="http://en.wikipedia.org/wiki/Race_condition">race
+condition</a> and the browser
+will drop the scheduled invocation.</p>
+<p>We need a way to asynchronously schedule invocation of a callback
+at will, <a href="http://docs.webplatform.org/wiki/dom/Window/setTimeout" title="setTimeout">setTimeout</a> allows us to do exactly that, it invokes the
+given callback <em>once</em> after the given interval, if we recursively call
+setTimeout within the callback we are effectively creating a loop that
+does one iteration at a time.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >Game</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // Holds a timestamp indicating
+</span>     <span class="token comment" spellcheck="true"> // when the last tick occurred.
+</span>     <span class="token comment" spellcheck="true"> // Initially set to null,
+</span>     <span class="token comment" spellcheck="true"> // indicating that no tick has taken place.
+</span>      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Set a timeout to invoke this.tick as
+</span>     <span class="token comment" spellcheck="true"> // soon as the browser will allow it.
+</span>      <span class="token function" >setTimeout<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >,</span> <span class="token number" >0</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >tick<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >let</span> time <span class="token operator" >=</span> Date<span class="token punctuation" >.</span><span class="token function" >now<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // On the first tick delta time should be 0.
+</span>      <span class="token keyword" >let</span> delta <span class="token operator" >=</span> time <span class="token operator" >-</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >||</span> time<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> time<span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >step<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Schedule this.tick to be invoked again
+</span>     <span class="token comment" spellcheck="true"> // in 16 milliseconds (around 60 ticks per second).
+</span>      <span class="token function" >setTimeout<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >,</span> <span class="token number" >16</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<h2 id="requesting-animation-frames">Requesting Animation Frames</h2>
+<p><a href="http://docs.webplatform.org/wiki/dom/Window/setTimeout" title="setTimeout">setTimeout</a> will work just fine in many cases, but here is the problem.
+<a href="http://docs.webplatform.org/wiki/dom/Window/setTimeout" title="setTimeout">setTimeout</a> is not precise enough, the timer resolution varies greatly
+depending on the browser, anywhere from 2-20 milliseconds and really that is
+just an indication, not a guarantee.</p>
+<p>However modern browsers give us a better alternative, <a href="http://docs.webplatform.org/wiki/dom/Window/requestAnimationFrame" title="requestAnimationFrame">requestAnimationFrame</a>.
+<a href="http://docs.webplatform.org/wiki/dom/Window/requestAnimationFrame" title="requestAnimationFrame">requestAnimationFrame</a> schedules a callback invocation before the next
+repaint. The number of callbacks performed is usually 60 times per second, but
+will generally match the display refresh rate in most web browsers.</p>
+<p>Also be aware that the callback rate may be reduced to a lower rate when the
+process is running in the background.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >Game</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // Holds a timestamp indicating
+</span>     <span class="token comment" spellcheck="true"> // when the last tick occurred.
+</span>     <span class="token comment" spellcheck="true"> // Initially set to null,
+</span>     <span class="token comment" spellcheck="true"> // indicating that no tick has taken place.
+</span>      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Request an animation frame to invoke this.tick.
+</span>      <span class="token function" >requestAnimationFrame<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >tick<span class="token punctuation" >(</span></span>time<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // requestAnimationFrame's callback gives a very high resolution
+</span>     <span class="token comment" spellcheck="true"> // timestamp (DOMHighResTimeStamp) as an argument. The timestamp
+</span>     <span class="token comment" spellcheck="true"> // is accurate to a microsecond so we no longer need, nor want to
+</span>     <span class="token comment" spellcheck="true"> // call Date.now as it is only accurate to the millisecond.
+</span>
+     <span class="token comment" spellcheck="true"> // On the first tick delta time should be 0.
+</span>      <span class="token keyword" >let</span> delta <span class="token operator" >=</span> time <span class="token operator" >-</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >||</span> time<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> time<span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >step<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Schedule this.tick to be invoked again
+</span>     <span class="token comment" spellcheck="true"> // on the next animation frame.
+</span>      <span class="token function" >requestAnimationFrame<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<h2 id="fix-your-timestep">Fix Your Timestep</h2>
+<p>There is still one major issue here however, and that is the naive nature of
+our <code>tick</code> method.  At small intervals, everything will most likely be fine,
+however as the interval between ticks increase your collisions will become
+inaccurate and unstable.</p>
+<p>We can solve this by introducing a fixed time-step.  We will keep drawing once
+per frame, but update our logic at several smaller iterations per tick.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >Game</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // Holds a timestamp indicating when the last tick occurred.
+</span>     <span class="token comment" spellcheck="true"> // Initially set to null, indicating that no tick has taken place.
+</span>      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Holds the accumulative time remaining for physics steps.
+</span>      <span class="token keyword" >this</span><span class="token punctuation" >.</span>accumulator <span class="token operator" >=</span> <span class="token number" >0.0</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Holds the size of a single timestep in milliseconds, in this
+</span>     <span class="token comment" spellcheck="true"> // case we will perform around 60 steps per second.
+</span>      <span class="token keyword" >this</span><span class="token punctuation" >.</span>stepSize <span class="token operator" >=</span> <span class="token number" >60</span> <span class="token operator" >/</span> <span class="token number" >1</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Request an animation frame to invoke this.tick
+</span>      <span class="token function" >requestAnimationFrame<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >tick<span class="token punctuation" >(</span></span>time<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // requestAnimationFrame's callback gives a very high resolution
+</span>     <span class="token comment" spellcheck="true"> // timestamp (DOMHighResTimeStamp) as an argument. The timestamp
+</span>     <span class="token comment" spellcheck="true"> // is accurate to a microsecond so we no longer need, nor want to
+</span>     <span class="token comment" spellcheck="true"> // call Date.now as it is only accurate to the millisecond.
+</span>
+     <span class="token comment" spellcheck="true"> // On the first tick delta time should be 0.
+</span>      <span class="token keyword" >let</span> delta <span class="token operator" >=</span> time <span class="token operator" >-</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >||</span> time<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> time<span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Add delta time to our accumulator, iterate over the steps we
+</span>     <span class="token comment" spellcheck="true"> // can do, and carry the leftovers over to the next frame.
+</span>      <span class="token keyword" >this</span><span class="token punctuation" >.</span>accumulator <span class="token operator" >+</span><span class="token operator" >=</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>delta<span class="token punctuation" >;</span>
+      <span class="token keyword" >while</span><span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>accumulator <span class="token operator" >>=</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>stepSize<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >step<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>stepSize<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>accumulator <span class="token operator" >-</span><span class="token operator" >=</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>stepSize<span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span>delta<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Request an animation frame to invoke this.tick again
+</span>      <span class="token function" >requestAnimationFrame<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<h2 id="compatibility-with-older-browsers">Compatibility With Older Browsers</h2>
+<p>Arguably there is no excuse using an old browser, but not everyone
+agrees so we can add at least some degree of compatibility with a
+polyfill fallback.</p>
+<pre><code class="lang-javascript"><span class="token punctuation" >(</span><span class="token keyword" >function</span> <span class="token punctuation" >(</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+   window<span class="token punctuation" >.</span>performance <span class="token operator" >=</span> <span class="token punctuation" >(</span>window<span class="token punctuation" >.</span>performance <span class="token operator" >||</span> <span class="token punctuation" >{</span><span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+   window<span class="token punctuation" >.</span>performance<span class="token punctuation" >.</span>now <span class="token operator" >=</span> <span class="token punctuation" >(</span><span class="token keyword" >function</span> <span class="token punctuation" >(</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >return</span> <span class="token punctuation" >(</span>
+         window<span class="token punctuation" >.</span>performance<span class="token punctuation" >.</span>now <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>performance<span class="token punctuation" >.</span>webkitNow <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>performance<span class="token punctuation" >.</span>msNow <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>performance<span class="token punctuation" >.</span>mozNow <span class="token operator" >||</span>
+         Date<span class="token punctuation" >.</span>now <span class="token operator" >||</span>
+         <span class="token keyword" >function</span> <span class="token punctuation" >(</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            <span class="token keyword" >return</span> <span class="token operator" >+</span><span class="token keyword" >new</span> <span class="token class-name" >Date</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+   window<span class="token punctuation" >.</span>requestAnimationFrame <span class="token operator" >=</span> <span class="token punctuation" >(</span><span class="token keyword" >function</span> <span class="token punctuation" >(</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >return</span> <span class="token punctuation" >(</span>
+         window<span class="token punctuation" >.</span>requestAnimationFrame <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>webkitRequestAnimationFrame <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>msRequestAnimationFrame <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>mozRequestAnimationFrame <span class="token operator" >||</span>
+         <span class="token keyword" >function</span> <span class="token punctuation" >(</span>callback<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            <span class="token keyword" >return</span> <span class="token function" >setTimeout<span class="token punctuation" >(</span></span><span class="token keyword" >function</span> <span class="token punctuation" >(</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+               <span class="token keyword" >var</span> time <span class="token operator" >=</span> window<span class="token punctuation" >.</span>performance<span class="token punctuation" >.</span><span class="token function" >now<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+               <span class="token function" >callback<span class="token punctuation" >(</span></span>time<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+            <span class="token punctuation" >}</span><span class="token punctuation" >,</span> <span class="token number" >16</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+   window<span class="token punctuation" >.</span>cancelAnimationFrame <span class="token operator" >=</span> <span class="token punctuation" >(</span><span class="token keyword" >function</span> <span class="token punctuation" >(</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >return</span> <span class="token punctuation" >(</span>
+         window<span class="token punctuation" >.</span>cancelAnimationFrame <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>webkitCancelAnimationFrame <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>msCancelAnimationFrame <span class="token operator" >||</span>
+         window<span class="token punctuation" >.</span>mozCancelAnimationFrame <span class="token operator" >||</span>
+         <span class="token keyword" >function</span> <span class="token punctuation" >(</span>id<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            <span class="token function" >clearTimeout<span class="token punctuation" >(</span></span>id<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+<span class="token punctuation" >}</span><span class="token punctuation" >)</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+</code></pre>
+
+      </span>
+
+      <footer class="post-footer">
+        <nav class="share">
+   <h4>Share this post</h4>
+   <a href="https://twitter.com/share?text=JavaScript Game Development Asynchronous Execution Loop&amp;url=http://caspervonb.github.io/2014/02/24/javascript-game-development-asynchronous-execution-loop"
+      onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+      <span>Twitter</span>
+   </a>
+
+   <a href="https://www.facebook.com/sharer/sharer.php?u=http://caspervonb.github.io/2014/02/24/javascript-game-development-asynchronous-execution-loop"
+      onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+      Facebook
+   </a>
+
+   <a href="https://plus.google.com/share?url=http://caspervonb.github.io/2014/02/24/javascript-game-development-asynchronous-execution-loop"
+      onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+      Google+
+   </a>
+</nav>
+
+      </footer>
+    </article>
+  </main>
+  
+  <footer role="contentinfo" class="site-footer">
+</footer>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-48351156-1', 'caspervonb.github.io');
+  ga('require', 'displayfeatures');
+  ga('require', 'linkid', 'linkid.js');
+  ga('send', 'pageview');
+</script>
+
+</body>
+</html>

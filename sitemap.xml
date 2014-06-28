@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+   
+   <url>
+      <loc>http://caspervonb.github.io/2014/03/05/ecmascript-6-features-and-tools</loc>
+      <lastmod>2014-03-05</lastmod>
+   </url>
+   
+   <url>
+      <loc>http://caspervonb.github.io/2014/03/02/javascript-game-development-managing-game-states</loc>
+      <lastmod>2014-03-02</lastmod>
+   </url>
+   
+   <url>
+      <loc>http://caspervonb.github.io/2014/02/24/javascript-game-development-asynchronous-execution-loop</loc>
+      <lastmod>2014-02-24</lastmod>
+   </url>
+   
+</urlset>

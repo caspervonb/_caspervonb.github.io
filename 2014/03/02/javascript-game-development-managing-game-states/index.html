@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+
+
+<base href="http://caspervonb.github.io" />
+
+
+<head>
+  <title>JavaScript Game Development Managing Game States</title>
+<meta name="description" content="" />
+
+<link href='http://fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+
+<link rel="stylesheet" type="text/css" href="stylesheets/index.css" />
+<link rel="stylesheet" type="text/css" href="stylesheets/syntax.css" />
+
+</head>
+
+<body>
+  <header class="site-header">
+   <span class="site-masthead">
+      <img src="" />
+
+      <a href="/"
+         <h1 class="site-title">
+            Casper Von B
+         </h1>
+      </a>
+
+      <span class="site-tagline">Designer, Developer.</span>
+   </span>
+</header>
+
+
+  <main role="main" class="site-content">
+    <article class="post">
+      <header class="post-header">
+        <h1 class="post-title">JavaScript Game Development Managing Game States</h1>
+        <time class="post-date">March 02 2014</time>
+      </header>
+
+      <span class="post-content">
+        <p>Unlike an application, which typically only has one state of execution where
+you have your data and manipulate it with various tools and operations, games, even
+a simplistic one, often has several distinct states of execution. If we use the
+classic <a href="http://www.atari.com/arcade#!/arcade/pong/play">pong</a> as an example we
+can identify five unique states of execution the game goes through, the loading
+state, a title state, a playing state, a pause state and a game over state.</p>
+<p>We could handle this using conditions to control the execution flow.  However
+such an approach quickly becomes tedious and difficult to maintain, even for a
+simple game.</p>
+<h2 id="what-is-a-game-state-">What Is a Game State?</h2>
+<p>Lets take a step back and actually define what a game state is, a game
+state is a separate state of execution within the game, that in most
+cases has its own unique event handling, logic and drawing mechanisms.</p>
+<p>Additionally, a game state will also need to be able to execute code when it&#39;s activated and deactivated.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >GameState</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>parent <span class="token operator" >=</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >activate<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >deactivate<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >handleEvent<span class="token punctuation" >(</span></span>event<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<h2 id="managing-game-states">Managing Game States</h2>
+<p>So we&#39;ve defined our states to have initialize, pause, resume and dispose
+methods, the rationale behind that is we are going to keep our game states in a
+stack, where the top state is considered the current state, drawing, stepping
+and event handling will be delegated to this state.</p>
+<p>When pushing a state, the previous state will be paused and the new state will
+be initialized, when popping a state the state is disposed and the previous
+state is resumed.</p>
+<p>This will allow us to temporarily push new states on top on top of the stack,
+without destroying any of the data or expectations of the previous states.</p>
+<p>For example, the player is in a play state and presses the <code>escape</code> key, you
+want to present them with a menu screen, you do this by pushing a new menu
+state and popping the state again when the player presses <code>escape</code> in the menu
+state.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >Game</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>states <span class="token operator" >=</span> <span class="token punctuation" >[</span><span class="token punctuation" >]</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >var</span> events <span class="token operator" >=</span> <span class="token punctuation" >[</span><span class="token string" >'keydown'</span><span class="token punctuation" >,</span> <span class="token string" >'keyup'</span><span class="token punctuation" >]</span><span class="token punctuation" >;</span>
+      <span class="token keyword" >for</span> <span class="token punctuation" >(</span><span class="token keyword" >var</span> event of events<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         window<span class="token punctuation" >.</span><span class="token function" >addEventListener<span class="token punctuation" >(</span></span>event<span class="token punctuation" >,</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>handleEvent<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> <span class="token number" >0</span><span class="token punctuation" >;</span>
+
+      window<span class="token punctuation" >.</span><span class="token function" >requestAnimationFrame<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >pushState<span class="token punctuation" >(</span></span>state<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >var</span> states <span class="token operator" >=</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // If there is a state at the top of the stack, deactivate it.
+</span>      <span class="token keyword" >if</span> <span class="token punctuation" >(</span>states<span class="token punctuation" >.</span>length <span class="token operator" >></span> <span class="token number" >0</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         states<span class="token punctuation" >[</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span><span class="token function" >deactivate<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+
+     <span class="token comment" spellcheck="true"> // Push the new state and activate it.
+</span>      states<span class="token punctuation" >.</span><span class="token function" >push<span class="token punctuation" >(</span></span>state<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      states<span class="token punctuation" >[</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span>parent <span class="token operator" >=</span> <span class="token keyword" >this</span><span class="token punctuation" >;</span>
+      states<span class="token punctuation" >[</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span><span class="token function" >activate<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >popState<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >var</span> states <span class="token operator" >=</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >;</span>
+
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span>states<span class="token punctuation" >.</span>length <span class="token operator" >></span> <span class="token number" >0</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+        <span class="token comment" spellcheck="true"> // Deactivate the top state and remove it.
+</span>         <span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >[</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span><span class="token function" >deactivate<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >[</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span>parent <span class="token operator" >=</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >.</span><span class="token function" >pop<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+        <span class="token comment" spellcheck="true"> // Activate the previous state.
+</span>         <span class="token keyword" >if</span> <span class="token punctuation" >(</span>states<span class="token punctuation" >.</span>length <span class="token operator" >></span> <span class="token number" >0</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            states<span class="token punctuation" >[</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span><span class="token function" >activate<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >changeState<span class="token punctuation" >(</span></span>state<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >var</span> states <span class="token operator" >=</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // Deactivate and remove all states in the stack.
+</span>      <span class="token keyword" >while</span><span class="token punctuation" >(</span>states<span class="token punctuation" >.</span>length <span class="token operator" >></span> <span class="token number" >0</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         states<span class="token punctuation" >[</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span><span class="token function" >deactivate<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         states<span class="token punctuation" >[</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >.</span>parent <span class="token operator" >=</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+         states<span class="token punctuation" >.</span><span class="token function" >pop<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+
+     <span class="token comment" spellcheck="true"> // Push the state onto the stack.
+</span>      <span class="token function" >pushState<span class="token punctuation" >(</span></span>state<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token keyword" >get</span> <span class="token function" >currentState<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >var</span> states <span class="token operator" >=</span> <span class="token keyword" >this</span><span class="token punctuation" >.</span>states<span class="token punctuation" >;</span>
+
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span>states<span class="token punctuation" >.</span>length <span class="token operator" >></span> <span class="token number" >0</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >return</span> states<span class="token punctuation" >[</span>states<span class="token punctuation" >.</span>length <span class="token operator" >-</span> <span class="token number" >1</span><span class="token punctuation" >]</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+
+      <span class="token keyword" >return</span> <span class="token keyword" >null</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >handleEvent<span class="token punctuation" >(</span></span>event<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>currentState<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>currentState<span class="token punctuation" >.</span><span class="token function" >handleEvent<span class="token punctuation" >(</span></span>event<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >tick<span class="token punctuation" >(</span></span>time<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >var</span> deltaTime <span class="token operator" >=</span> time <span class="token operator" >-</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >||</span> time<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>time <span class="token operator" >=</span> time<span class="token punctuation" >;</span>
+
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>currentState<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>currentState<span class="token punctuation" >.</span><span class="token function" >step<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>currentState<span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+
+      window<span class="token punctuation" >.</span><span class="token function" >requestAnimationFrame<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >.</span>tick<span class="token punctuation" >.</span><span class="token function" >bind<span class="token punctuation" >(</span></span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+  <span class="token comment" spellcheck="true"> // ...
+</span><span class="token punctuation" >}</span>
+</code></pre>
+<h2 id="composing-game-states">Composing Game States</h2>
+<p>So far, we have defined what a game state is and simple mechanics for
+managing the state stack. So how would it actually work in practice? Lets
+explore a simple example, with simulation and presentation code omitted for clarity.</p>
+<p>Starting with our game&#39;s title state, this will be a simple state in which the player
+can press the spacebar to start playing our game.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >GameTitleState</span> <span class="token keyword" >extends</span> <span class="token class-name" >GameState</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >super</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>input <span class="token operator" >=</span> <span class="token punctuation" >{</span>
+         start<span class="token punctuation" >:</span> <span class="token keyword" >false</span><span class="token punctuation" >,</span>
+      <span class="token punctuation" >}</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >handleEvent<span class="token punctuation" >(</span></span>event<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>type <span class="token operator" >==</span> <span class="token string" >'keydown'</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>keyCode <span class="token operator" >==</span> <span class="token number" >32</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            <span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>start <span class="token operator" >=</span> <span class="token keyword" >true</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>start<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >var</span> playState <span class="token operator" >=</span> <span class="token keyword" >new</span> <span class="token class-name" >GamePlayState</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>parent<span class="token punctuation" >.</span><span class="token function" >changeState<span class="token punctuation" >(</span></span>playState<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<hr>
+<p>Next is our play state, which would handle the actual game physics and drawing,
+the player should also be able to pause the game when pressing the escape key,
+which we will handle by pushing pause state on top of stack.</p>
+<pre><code class="lang-javascript"><span class="token comment" spellcheck="true">//
+</span><span class="token comment" spellcheck="true">//
+</span><span class="token keyword" >class</span> <span class="token class-name" >GamePlayState</span> <span class="token keyword" >extends</span> <span class="token class-name" >GameState</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >super</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>input <span class="token operator" >=</span> <span class="token punctuation" >{</span>
+         pause<span class="token punctuation" >:</span> <span class="token keyword" >false</span><span class="token punctuation" >,</span>
+        <span class="token comment" spellcheck="true"> // ...
+</span>      <span class="token punctuation" >}</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+
+   <span class="token function" >handleEvent<span class="token punctuation" >(</span></span>event<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>type <span class="token operator" >==</span> <span class="token string" >'keydown'</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>keyCode <span class="token operator" >==</span> <span class="token number" >27</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            <span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>pause <span class="token operator" >=</span> <span class="token keyword" >true</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>pause<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>pause <span class="token operator" >=</span> <span class="token keyword" >false</span><span class="token punctuation" >;</span>
+
+         <span class="token keyword" >var</span> pauseState <span class="token operator" >=</span> <span class="token keyword" >new</span> <span class="token class-name" >GamePauseState</span><span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>parent<span class="token punctuation" >.</span><span class="token function" >pushState<span class="token punctuation" >(</span></span>pauseState<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>board<span class="token punctuation" >.</span><span class="token function" >step<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>board<span class="token punctuation" >.</span>gameOver<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >var</span> overState <span class="token operator" >=</span> <span class="token keyword" >new</span> <span class="token class-name" >GameOverState</span><span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span><span class="token function" >pushState<span class="token punctuation" >(</span></span>overState<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>board<span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<hr>
+<p>Now, for our pause state we want to overlay it on the play state itself, so
+we&#39;ll need to create a composite state, in which the draw method of the play
+state still gets called.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >GamePauseState</span> <span class="token keyword" >extends</span> <span class="token class-name" >GameState</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span>playState<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >super</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>input <span class="token operator" >=</span> <span class="token punctuation" >{</span>
+         resume<span class="token punctuation" >:</span> <span class="token keyword" >false</span><span class="token punctuation" >,</span>
+        <span class="token comment" spellcheck="true"> // ...
+</span>      <span class="token punctuation" >}</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>playState <span class="token operator" >=</span> playState<span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >handleEvent<span class="token punctuation" >(</span></span>event<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>type <span class="token operator" >==</span> <span class="token string" >'keydown'</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>keyCode <span class="token operator" >==</span> <span class="token number" >27</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            <span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>resume <span class="token operator" >=</span> <span class="token keyword" >true</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>resume<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>parent<span class="token punctuation" >.</span><span class="token function" >popState<span class="token punctuation" >(</span></span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>playState<span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span><span class="token number" >0</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+<hr>
+<p>Finally, we have our game over state, which be a composite state as-well and when the
+player presses the spacebar we come full circle and change to a new title
+state.</p>
+<pre><code class="lang-javascript"><span class="token keyword" >class</span> <span class="token class-name" >GameOverState</span> <span class="token keyword" >extends</span> <span class="token class-name" >GameState</span> <span class="token punctuation" >{</span>
+   <span class="token function" >constructor<span class="token punctuation" >(</span></span>playState<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >super</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>input <span class="token operator" >=</span> <span class="token punctuation" >{</span>
+         start<span class="token punctuation" >:</span> <span class="token keyword" >false</span><span class="token punctuation" >,</span>
+        <span class="token comment" spellcheck="true"> // ...
+</span>      <span class="token punctuation" >}</span><span class="token punctuation" >;</span>
+
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>playState <span class="token operator" >=</span> playState<span class="token punctuation" >;</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >handleEvent<span class="token punctuation" >(</span></span>event<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+     <span class="token comment" spellcheck="true"> // ...
+</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>type <span class="token operator" >==</span> <span class="token string" >'keydown'</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >if</span> <span class="token punctuation" >(</span>event<span class="token punctuation" >.</span>keyCode <span class="token operator" >==</span> <span class="token number" >32</span><span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+            <span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>start <span class="token operator" >=</span> <span class="token keyword" >true</span><span class="token punctuation" >;</span>
+         <span class="token punctuation" >}</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >step<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >if</span> <span class="token punctuation" >(</span><span class="token keyword" >this</span><span class="token punctuation" >.</span>input<span class="token punctuation" >.</span>start<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+         <span class="token keyword" >var</span> titleState <span class="token operator" >=</span> <span class="token keyword" >new</span> <span class="token class-name" >GameTitleState</span><span class="token punctuation" >(</span><span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+         <span class="token keyword" >this</span><span class="token punctuation" >.</span>parent<span class="token punctuation" >.</span><span class="token function" >changeState<span class="token punctuation" >(</span></span>titleState<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+      <span class="token punctuation" >}</span>
+   <span class="token punctuation" >}</span>
+
+   <span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span> <span class="token punctuation" >{</span>
+      <span class="token keyword" >this</span><span class="token punctuation" >.</span>playState<span class="token punctuation" >.</span><span class="token function" >draw<span class="token punctuation" >(</span></span>deltaTime<span class="token punctuation" >)</span><span class="token punctuation" >;</span>
+
+     <span class="token comment" spellcheck="true"> // ...
+</span>   <span class="token punctuation" >}</span>
+<span class="token punctuation" >}</span>
+</code></pre>
+
+      </span>
+
+      <footer class="post-footer">
+        <nav class="share">
+   <h4>Share this post</h4>
+   <a href="https://twitter.com/share?text=JavaScript Game Development Managing Game States&amp;url=http://caspervonb.github.io/2014/03/02/javascript-game-development-managing-game-states"
+      onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+      <span>Twitter</span>
+   </a>
+
+   <a href="https://www.facebook.com/sharer/sharer.php?u=http://caspervonb.github.io/2014/03/02/javascript-game-development-managing-game-states"
+      onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+      Facebook
+   </a>
+
+   <a href="https://plus.google.com/share?url=http://caspervonb.github.io/2014/03/02/javascript-game-development-managing-game-states"
+      onclick="window.open(this.href, 'google-plus-share', 'width=490,height=530');return false;">
+      Google+
+   </a>
+</nav>
+
+      </footer>
+    </article>
+  </main>
+  
+  <footer role="contentinfo" class="site-footer">
+</footer>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-48351156-1', 'caspervonb.github.io');
+  ga('require', 'displayfeatures');
+  ga('require', 'linkid', 'linkid.js');
+  ga('send', 'pageview');
+</script>
+
+</body>
+</html>
